@@ -1,5 +1,9 @@
 import { driveApiUrl } from "../shared/api_url.mjs";
 
+// Unsaved input lives only in this page session, never in workflow or browser storage.
+let draft = null;
+let closeActive = null;
+
 const PREFIX = "/google_drive_upload";
 async function call(path, body) {
   const response = await fetch(driveApiUrl(PREFIX + path), {
@@ -14,7 +18,7 @@ async function call(path, body) {
 }
 
 export async function openDriveSetup(node) {
-  document.getElementById("comfy-google-drive-setup")?.remove();
+  closeActive?.();
   const panel = document.createElement("dialog");
   panel.id = "comfy-google-drive-setup";
   panel.setAttribute("aria-label", "Google Drive Setup");
@@ -35,9 +39,24 @@ export async function openDriveSetup(node) {
   }
   const credentials = field("OAuth web client JSON (paste or import)", "credentials", "textarea");
   credentials.rows = 4;
+  credentials.value = draft?.credentials || "";
+  const credentialState = document.createElement("p");
+  credentialState.dataset.credentialState = "";
+  panel.append(credentialState);
+  let configured = false;
+  const showCredentialState = () => {
+    credentials.placeholder = configured ? "Credentials saved on server. Paste JSON only to replace them." : "Paste your OAuth web client JSON here.";
+    credentialState.textContent = credentials.value.trim()
+      ? "Unsaved JSON. Click Save Configuration to keep it after a page reload."
+      : configured ? "OAuth credentials saved on server. You do not need to paste them again. The saved secret is hidden."
+      : "No OAuth credentials saved yet.";
+  };
+  credentials.addEventListener("input", showCredentialState);
   const file = field("Import credential JSON", "credential_file"); file.type = "file"; file.accept = ".json,application/json";
   const redirect = field("Public HTTPS callback URL — register this exact URL in Google Cloud", "redirect_uri");
-  redirect.value = new URL(driveApiUrl(PREFIX + "/oauth/callback"), window.location.href).href;
+  redirect.value = draft?.redirect_uri || new URL(driveApiUrl(PREFIX + "/oauth/callback"), window.location.href).href;
+  let redirectEdited = Boolean(draft);
+  redirect.addEventListener("input", () => { redirectEdited = true; });
   const status = document.createElement("p"); status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
   const buttons = document.createElement("div"); buttons.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;";
   panel.append(buttons, status);
@@ -60,19 +79,22 @@ export async function openDriveSetup(node) {
   const refresh = async () => {
     const data = await call("/status");
     status.textContent = data.connected ? "Connected. Ready to upload." : data.configured ? "Configuration saved. Connect Google Drive next." : "Import your OAuth web client JSON to begin.";
-    if (data.redirect_uri) redirect.value = data.redirect_uri;
+    configured = Boolean(data.configured);
+    showCredentialState();
+    if (data.redirect_uri && !redirectEdited) redirect.value = data.redirect_uri;
   };
   file.addEventListener("change", () => action(async () => {
     const chosen = file.files?.[0];
     if (!chosen) { status.textContent = "No file selected."; return; }
     if (chosen.size > 32768) throw new Error("Credential JSON must be smaller than 32 KB.");
-    credentials.value = await chosen.text(); file.value = ""; status.textContent = "JSON imported. Save Configuration to continue.";
+    credentials.value = await chosen.text(); showCredentialState(); file.value = ""; status.textContent = "JSON imported. Save Configuration to continue.";
   }));
   button(buttons, "Save Configuration", async () => {
     let value;
     try { value = JSON.parse(credentials.value); } catch { throw new Error("Paste or import a valid OAuth web client JSON."); }
     await call("/config", { credentials: value, redirect_uri: redirect.value.trim() });
-    credentials.value = ""; file.value = ""; authLink.style.display = "none"; authLink.removeAttribute("href");
+    draft = null; redirectEdited = false;
+    configured = true; credentials.value = ""; showCredentialState(); file.value = ""; authLink.style.display = "none"; authLink.removeAttribute("href");
     await refresh();
   });
   button(buttons, "Connect Google Drive", async () => {
@@ -97,7 +119,13 @@ export async function openDriveSetup(node) {
     status.textContent = `Folder created. Destination folder_id: ${data.id}`;
   });
   const close = document.createElement("button"); close.type = "button"; close.textContent = "Close"; close.style.cssText = "margin-left:12px;padding:9px 14px;";
-  const cleanup = () => { credentials.value = ""; file.value = ""; panel.remove(); };
+  const cleanup = () => {
+    draft = credentials.value.trim() || redirectEdited
+      ? { credentials: credentials.value, redirect_uri: redirect.value } : null;
+    credentials.value = ""; file.value = ""; panel.remove();
+    if (closeActive === cleanup) closeActive = null;
+  };
+  closeActive = cleanup;
   close.addEventListener("click", cleanup); panel.addEventListener("cancel", event => { event.preventDefault(); cleanup(); }); panel.append(close);
   document.body.append(panel);
   if (typeof panel.showModal === "function") panel.showModal(); else panel.setAttribute("open", "");

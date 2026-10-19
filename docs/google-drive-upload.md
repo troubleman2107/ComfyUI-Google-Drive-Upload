@@ -41,7 +41,7 @@ without these optional packages.
    use **the exact same URL** in setup and Google Cloud.
 4. Add that URL under **Authorized redirect URIs** for your Google web OAuth
    client. A JavaScript origin entry alone is not a redirect URI.
-5. Paste/import the JSON in the setup dialog and click **Save Configuration**.
+5. Paste/import the JSON in the setup dialog and click **Save Configuration**. Reopening shows “OAuth credentials saved on server”; the secret stays hidden and does not need to be pasted again. Unsaved input survives closing/reopening the dialog in the same page, but is cleared on a browser reload.
    Saving configuration clears the previous connection, so reconnect afterward.
 6. Click **Connect Google Drive**, then **Continue to Google sign-in**. Authorize
    the account that owns or can write to your destination folder.
