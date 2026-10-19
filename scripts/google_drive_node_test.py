@@ -51,12 +51,14 @@ class ServiceTests(unittest.TestCase):
         s = self.service()
         s.api.files().get().execute.return_value = {'mimeType':'application/vnd.google-apps.folder','capabilities':{'canAddChildren':True}}
         s.validate_folder('folder')
+        self.assertTrue(s.api.files().get.call_args.kwargs.get('supportsAllDrives'))
         for entry in [{'mimeType':'image/png'}, {'mimeType':'application/vnd.google-apps.folder','trashed':True}]:
             s.api.files().get().execute.return_value = entry
             with self.assertRaises(service_module.DriveError): s.validate_folder('folder')
         with self.assertRaises(service_module.DriveError): s.validate_folder('../secret')
         s.api.files().create().execute.return_value = {'id':'new'}
         self.assertEqual(s.create_folder('Generated')['id'], 'new')
+        self.assertTrue(s.api.files().create.call_args.kwargs.get('supportsAllDrives'))
         s.api.files().update.assert_not_called()
         s.api.permissions.assert_not_called()
 
@@ -68,7 +70,27 @@ class ServiceTests(unittest.TestCase):
         kwargs = s.api.files().create.call_args.kwargs
         self.assertEqual(kwargs['body'], {'name':'photo.png','parents':['folder']})
         self.assertTrue(kwargs['media_body'].resumable())
+        self.assertTrue(kwargs.get('supportsAllDrives'))
         s.api.files().update.assert_not_called()
+
+    def test_missing_folder_identifies_connected_account(self):
+        s = self.service()
+        exc = RuntimeError('SECRET response body')
+        exc.resp = types.SimpleNamespace(status=404)
+        s.api.files().get().execute.side_effect = exc
+        s.api.about().get().execute.return_value = {'user': {'emailAddress': 'connected@example.com'}}
+        with self.assertRaises(service_module.DriveError) as result:
+            s.validate_folder('existing-folder')
+        message = str(result.exception)
+        self.assertIn('connected@example.com', message)
+        self.assertIn('existing-folder', message)
+        self.assertNotIn('SECRET', message)
+        s.api.about().get().execute.side_effect = RuntimeError('SECRET account lookup')
+        with self.assertRaises(service_module.DriveError) as result:
+            s.validate_folder('existing-folder')
+        self.assertIn('existing-folder', str(result.exception))
+        self.assertNotIn('SECRET', str(result.exception))
+        s.api.files().create.assert_not_called()
 
     def test_refresh_uses_fixed_endpoint_and_persists(self):
         store=Mock()
