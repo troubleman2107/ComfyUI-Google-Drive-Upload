@@ -1,0 +1,6 @@
+{
+  "name": "comfyui-google-drive-upload-tests",
+  "private": true,
+  "scripts": {"test": "node --experimental-vm-modules scripts/google_drive_ui_test.cjs"},
+  "devDependencies": {"jsdom": "^26.1.0"}
+}

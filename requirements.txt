@@ -1,0 +1,4 @@
+google-auth-oauthlib>=1.2,<2
+google-api-python-client>=2.120,<3
+numpy
+Pillow

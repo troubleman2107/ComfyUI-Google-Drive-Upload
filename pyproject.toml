@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-google-drive-upload"
+version = "0.1.0"
+description = "Upload ComfyUI image batches to Google Drive with web OAuth, folder creation, and Drive links."
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = ["google-auth-oauthlib>=1.2,<2", "google-api-python-client>=2.120,<3", "numpy", "Pillow"]
+
+[project.urls]
+Repository = "https://github.com/troubleman2107/ComfyUI-Google-Drive-Upload"
+Issues = "https://github.com/troubleman2107/ComfyUI-Google-Drive-Upload/issues"
+
+[tool.comfy]
+DisplayName = "Google Drive Upload"

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+.env
+.env.*
+user/
+credentials*.json
+client_secret*.json
+token.json
+.DS_Store
+*.zip
