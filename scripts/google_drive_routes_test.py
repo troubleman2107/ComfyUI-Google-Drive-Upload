@@ -45,3 +45,34 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('sensitive',await r.text())
         r = await self.client.post('/google_drive_upload/folders',json={'name':'x'})
         self.assertEqual(r.status,403)
+
+    async def test_local_oauth_cookie_and_callback(self):
+        callback = self.origin + '/api/google_drive_upload/oauth/callback'
+        self.store.save_config({'web': {'client_id': 'test', 'client_secret': 'test'}}, callback)
+        sessions = helpers.OAuthSessions(self.store)
+        with patch.object(routes, 'get_oauth_sessions', return_value=sessions):
+            r = await self.client.post('/google_drive_upload/oauth/start', json={}, headers={'Origin': self.origin})
+            self.assertEqual(r.status, 200)
+            cookie = r.cookies[routes.COOKIE]
+            self.assertFalse(cookie['secure'])
+            self.assertTrue(cookie['httponly'])
+            self.assertEqual(cookie['samesite'], 'Lax')
+            from urllib.parse import urlsplit, parse_qs
+            state = parse_qs(urlsplit((await r.json())['authorization_url']).query)['state'][0]
+            from unittest.mock import Mock
+            flow = Mock()
+            flow.credentials.to_json.return_value = '{"refresh_token":"test-refresh"}'
+            with patch.object(helpers, '_flow', return_value=flow):
+                r = await self.client.get('/google_drive_upload/oauth/callback',
+                    params={'state': state, 'code': 'test-code'}, cookies={routes.COOKIE: cookie.value})
+            self.assertEqual(r.status, 200)
+            self.assertTrue(self.store.status()['connected'])
+
+    async def test_public_proxy_keeps_secure_cookie(self):
+        self.store.save_config({'web': {'client_id': 'test', 'client_secret': 'test'}},
+                              'https://comfy.example/api/google_drive_upload/oauth/callback')
+        with patch.object(routes, 'get_oauth_sessions', return_value=helpers.OAuthSessions(self.store)):
+            r = await self.client.post('/google_drive_upload/oauth/start', json={},
+                headers={'Origin': 'https://comfy.example', 'Host': 'comfy.example'})
+        self.assertEqual(r.status, 200)
+        self.assertTrue(r.cookies[routes.COOKIE]['secure'])

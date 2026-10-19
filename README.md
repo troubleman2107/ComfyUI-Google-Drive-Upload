@@ -4,7 +4,7 @@ A standalone custom node that uploads generated images to personal Google Drive
 (My Drive). No Pixaroma installation is required.
 
 - Upload one image or a batch as PNG.
-- Connect your Google account using web OAuth on a remote HTTPS ComfyUI server.
+- Connect your Google account using web OAuth on a remote HTTPS server or local HTTP ComfyUI.
 - Set a destination folder ID or create a folder from the setup dialog.
 - Return file IDs and Drive links, plus the original IMAGE passthrough.
 - Keep credentials on the server, outside exported workflows.
@@ -33,9 +33,11 @@ ComfyUI Registry or the searchable Manager catalog.
 1. Enable Google Drive API in your Google Cloud project and create a **Web
    application** OAuth client. Download its JSON.
 2. Add **Google Drive Upload** and click **Google Drive Setup**.
-3. Register the exact HTTPS callback displayed by setup in Google Cloud's
+3. Register the exact callback displayed by setup in Google Cloud's
    **Authorized redirect URIs**. Usually it is:
    `https://YOUR-COMFY-HOST/api/google_drive_upload/oauth/callback`.
+   Local HTTP is also supported, e.g.
+   `http://127.0.0.1:8188/api/google_drive_upload/oauth/callback`.
 4. Import the JSON, save configuration, then connect and follow the Google
    sign-in link. Return to ComfyUI and refresh status.
 5. Paste your Drive folder ID into `folder_id`, or create a folder in setup.

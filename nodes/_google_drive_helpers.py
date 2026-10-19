@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 AUTH_URI = 'https://accounts.google.com/o/oauth2/auth'
 TOKEN_URI = 'https://oauth2.googleapis.com/token'
+LOOPBACK_HOSTS = frozenset({'localhost', '127.0.0.1', '::1'})
 SCOPES = ['https://www.googleapis.com/auth/drive']
 _LOCK = threading.RLock()
 
@@ -32,15 +33,16 @@ def normalize_client_config(value):
 
 def validate_redirect_uri(value):
     if not isinstance(value, str):
-        raise DriveError('Enter the public HTTPS OAuth callback URL.')
+        raise DriveError('Enter an HTTPS callback URL, or HTTP for localhost.')
     try:
         u = urlsplit(value.strip())
-        if (u.scheme != 'https' or not u.hostname or u.username or u.password or
+        local_http = u.scheme == 'http' and u.hostname in LOOPBACK_HOSTS
+        if ((u.scheme != 'https' and not local_http) or not u.hostname or u.username or u.password or
                 u.fragment or u.query or not u.path.endswith('/google_drive_upload/oauth/callback')):
             raise ValueError()
         _ = u.port
     except ValueError:
-        raise DriveError('Use an HTTPS URL ending in /google_drive_upload/oauth/callback, without query or fragment.') from None
+        raise DriveError('Use HTTPS (or HTTP on localhost, 127.0.0.1, or ::1) ending in /google_drive_upload/oauth/callback, without query or fragment.') from None
     return value.strip()
 
 

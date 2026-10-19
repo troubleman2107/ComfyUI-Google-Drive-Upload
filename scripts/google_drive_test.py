@@ -28,6 +28,18 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(gd.DriveError):
                 gd.validate_redirect_uri(url)
 
+    def test_local_http_callback(self):
+        for host in ['127.0.0.1', 'localhost', '[::1]']:
+            callback = f'http://{host}:8188/api/google_drive_upload/oauth/callback'
+            self.store.save_config(CLIENT, callback)
+            self.assertEqual(self.store.load_config()['redirect_uri'], callback)
+            result = gd.OAuthSessions(self.store).begin('browser')
+            from urllib.parse import parse_qs, urlsplit
+            self.assertEqual(parse_qs(urlsplit(result['authorization_url']).query)['redirect_uri'], [callback])
+        for host in ['0.0.0.0', '192.168.1.2', 'example.com', 'localhost.evil.com', '127.0.0.1.evil.com']:
+            with self.assertRaises(gd.DriveError):
+                gd.validate_redirect_uri(f'http://{host}:8188/api/google_drive_upload/oauth/callback')
+
     def test_private_status_and_token_update(self):
         self.store.save_config(CLIENT, CALLBACK)
         self.store.save_token({'refresh_token':'refresh-secret','token':'access-secret'})

@@ -35,8 +35,9 @@ without these optional packages.
    ```
 
    Keep your deployment's path prefix if hosted beneath one. Check the displayed
-   URL against your proxy configuration; edit it if necessary. It must be HTTPS
-   and end in `/google_drive_upload/oauth/callback`. Do not add a query
+   URL against your proxy configuration; edit it if necessary. Use HTTPS for remote servers. Local installations also support HTTP on
+   `localhost`, `127.0.0.1`, or `[::1]`, for example
+   `http://127.0.0.1:8188/api/google_drive_upload/oauth/callback`. The URL must end in `/google_drive_upload/oauth/callback`. Do not add a query
    string or fragment. The shorter non-`/api` alias may also work on your server;
    use **the exact same URL** in setup and Google Cloud.
 4. Add that URL under **Authorized redirect URIs** for your Google web OAuth
@@ -99,7 +100,7 @@ server login or turn an openly shared instance into a private one.
 Use the same public origin/browser for setup and the callback. Your reverse
 proxy must preserve the public `Host` header for same-origin checks, forward the
 callback route, and allow the OAuth session cookie to reach the callback. The
-cookie is HttpOnly, Secure and SameSite=Lax. Do not rewrite HTTPS to HTTP in the
+cookie is HttpOnly and SameSite=Lax, with Secure enabled except for local HTTP setup. Do not rewrite HTTPS to HTTP in the
 configured callback URL. If proxy authentication interrupts Google's callback,
 complete that authentication in the same browser before starting sign-in again.
 

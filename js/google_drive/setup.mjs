@@ -53,7 +53,7 @@ export async function openDriveSetup(node) {
   };
   credentials.addEventListener("input", showCredentialState);
   const file = field("Import credential JSON", "credential_file"); file.type = "file"; file.accept = ".json,application/json";
-  const redirect = field("Public HTTPS callback URL — register this exact URL in Google Cloud", "redirect_uri");
+  const redirect = field("Callback URL (HTTPS, or HTTP for localhost) — register this exact URL in Google Cloud", "redirect_uri");
   redirect.value = draft?.redirect_uri || new URL(driveApiUrl(PREFIX + "/oauth/callback"), window.location.href).href;
   let redirectEdited = Boolean(draft);
   redirect.addEventListener("input", () => { redirectEdited = true; });

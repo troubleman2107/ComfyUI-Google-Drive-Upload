@@ -6,7 +6,7 @@ import json
 import secrets
 from urllib.parse import urlsplit
 from aiohttp import web
-from .nodes._google_drive_helpers import DriveError, get_drive_store, get_oauth_sessions
+from .nodes._google_drive_helpers import DriveError, LOOPBACK_HOSTS, get_drive_store, get_oauth_sessions
 from .nodes._google_drive_service import DriveService
 
 PREFIX = '/google_drive_upload'
@@ -84,7 +84,9 @@ def register_drive_routes(routes):
             browser = secrets.token_urlsafe(32)
         result = await asyncio.to_thread(get_oauth_sessions().begin, browser)
         response = web.json_response(result, headers=HEADERS)
-        response.set_cookie(COOKIE, browser, secure=True, httponly=True, samesite='Lax', max_age=900, path='/')
+        # Keep Secure for public reverse proxies even when their upstream is HTTP.
+        local_http = request.scheme == 'http' and urlsplit('//' + request.host).hostname in LOOPBACK_HOSTS
+        response.set_cookie(COOKIE, browser, secure=not local_http, httponly=True, samesite='Lax', max_age=900, path='/')
         return response
 
     @routes.get(PREFIX + '/oauth/callback')
